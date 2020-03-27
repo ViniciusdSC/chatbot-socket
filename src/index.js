@@ -5,11 +5,19 @@ import watson from '~/services/watson';
 import { authorizate } from '~/services/auth';
 
 const app = express();
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", process.env.CORS_LIST);
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  next()
+})
+
 const server = http.createServer(app);
 const io = socketIO(server);
 const port = process.env.PORT || 3000;
 
-io.origins(process.env.CORS_LIST);
+// io.origins(process.env.CORS_LIST);
 io.use(async (socket, next) => {
   const token = socket.handshake.query.token;
   socket.handshake.user_id = (await authorizate({ token })).data.data.user.user_id
@@ -24,7 +32,11 @@ io.on('connection', function(socket) {
     watsonInstance.sendMessage({ text, user_id })
       .then(res => {
         const output = res.result.output;
-        socket.emit('message', output.generic[0].text);
+        if (output.generic.length === 0) {
+          socket.emit('message', 'Error ocurred, please contact devs');
+        } else {
+          socket.emit('message', output.generic[0].text);
+        }
       });
   }
 
