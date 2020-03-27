@@ -20,8 +20,13 @@ const port = process.env.PORT || 3000;
 // io.origins(process.env.CORS_LIST);
 io.use(async (socket, next) => {
   const token = socket.handshake.query.token;
-  socket.handshake.user_id = (await authorizate({ token })).data.data.user.user_id
-  return next();
+  const data = (await authorizate({ token })).data;
+  if (data.success) {
+    socket.handshake.user_id = data.data.user.user_id
+    return next();
+  } else {
+    socket.emit('logout');
+  }
 });
 
 io.on('connection', function(socket) {
