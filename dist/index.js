@@ -36,8 +36,13 @@ const port = process.env.PORT || 3000;
 // io.origins(process.env.CORS_LIST);
 io.use(async (socket, next) => {
   const token = socket.handshake.query.token;
-  socket.handshake.user_id = (await (0, _auth.authorizate)({ token })).data.data.user.user_id;
-  return next();
+  const data = (await (0, _auth.authorizate)({ token })).data;
+  if (data.success) {
+    socket.handshake.user_id = data.data.user.user_id;
+    return next();
+  } else {
+    socket.emit('logout');
+  }
 });
 
 io.on('connection', function (socket) {
@@ -46,7 +51,6 @@ io.on('connection', function (socket) {
 
   const sendMessage = ({ socket, watsonInstance, text, user_id }) => {
     watsonInstance.sendMessage({ text, user_id }).then(res => {
-      console.log(res);
       const output = res.result.output;
       if (output.generic.length === 0) {
         socket.emit('message', 'Error ocurred, please contact devs');
